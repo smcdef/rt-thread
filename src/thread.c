@@ -107,11 +107,11 @@ void rt_thread_exit(void)
         rt_list_insert_after(&rt_thread_defunct, &(thread->tlist));
     }
 
-    /* enable interrupt */
-    rt_hw_interrupt_enable(level);
-
     /* switch to next task */
     rt_schedule();
+
+    /* enable interrupt */
+    rt_hw_interrupt_enable(level);
 }
 
 static rt_err_t _rt_thread_init(struct rt_thread *thread,
@@ -141,7 +141,7 @@ static rt_err_t _rt_thread_init(struct rt_thread *thread,
                                           (void *)rt_thread_exit);
 #else
     thread->sp = (void *)rt_hw_stack_init(thread->entry, thread->parameter,
-                                          (void *)((char *)thread->stack_addr + thread->stack_size - sizeof(rt_ubase_t)),
+                                          (rt_uint8_t *)((char *)thread->stack_addr + thread->stack_size - sizeof(rt_ubase_t)),
                                           (void *)rt_thread_exit);
 #endif
 
@@ -172,6 +172,7 @@ static rt_err_t _rt_thread_init(struct rt_thread *thread,
     /* lock init */
     thread->scheduler_lock_nest = 0;
     thread->cpus_lock_nest = 0;
+    thread->critical_lock_nest = 0;
 #endif /*RT_USING_SMP*/
 
     /* initialize cleanup function and user data */
@@ -191,7 +192,9 @@ static rt_err_t _rt_thread_init(struct rt_thread *thread,
     thread->sig_mask    = 0x00;
     thread->sig_pending = 0x00;
 
+#ifndef RT_USING_SMP
     thread->sig_ret     = RT_NULL;
+#endif
     thread->sig_vectors = RT_NULL;
     thread->si_list     = RT_NULL;
 #endif
@@ -443,11 +446,11 @@ rt_err_t rt_thread_delete(rt_thread_t thread)
     /* release thread timer */
     rt_timer_detach(&(thread->thread_timer));
 
-    /* change stat */
-    thread->stat = RT_THREAD_CLOSE;
-
     /* disable interrupt */
     lock = rt_hw_interrupt_disable();
+
+    /* change stat */
+    thread->stat = RT_THREAD_CLOSE;
 
     /* insert to defunct thread list */
     rt_list_insert_after(&rt_thread_defunct, &(thread->tlist));

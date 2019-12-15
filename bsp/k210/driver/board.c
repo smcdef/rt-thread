@@ -19,13 +19,6 @@
 #include "fpioa.h"
 #include "dmac.h"
 
-#include "uarths.h"
-void rt_hw_console_output(const char *str)
-{
-    uarths_puts(str);
-    return ;
-}
-
 void init_bss(void)
 {
     unsigned int *dst;
@@ -117,3 +110,10 @@ void rt_hw_board_init(void)
     rt_components_board_init();
 #endif
 }
+void rt_hw_cpu_reset(void)
+{
+    sysctl->soft_reset.soft_reset = 1;
+    while(1);
+}
+
+MSH_CMD_EXPORT_ALIAS(rt_hw_cpu_reset, reboot, reset machine);
